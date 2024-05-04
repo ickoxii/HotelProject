@@ -165,6 +165,10 @@ public class RoomDAO extends BaseDAO<Room>{
                 ", dailyPrice = " + updatedInfo.getDailyPrice().toString() + " WHERE roomNumber = " + updatedInfo.getRoomNumber().toString();
             statement.executeUpdate(sqlUpdate);
 
+            // Update reservations with new daily price
+            String sqlUpdate2 = "UPDATE RESERVATIONs SET price = " + updatedInfo.getDailyPrice().toString() + " WHERE roomNumber = " + updatedInfo.getRoomNumber().toString();
+            statement.executeUpdate(sqlUpdate2);
+
             return 1;
 
         } catch (SQLException | BadConnectionException e) {

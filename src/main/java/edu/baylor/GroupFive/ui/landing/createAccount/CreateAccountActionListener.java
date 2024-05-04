@@ -6,6 +6,7 @@ import java.io.IOException;
 
 import javax.swing.JTextField;
 
+import edu.baylor.GroupFive.util.CoreUtils;
 import edu.baylor.GroupFive.database.controllers.AccountController;
 import edu.baylor.GroupFive.models.User;
 import edu.baylor.GroupFive.ui.landing.LandingPage;
@@ -13,6 +14,10 @@ import edu.baylor.GroupFive.ui.utils.BadInputDialog;
 
 /**
  * ActionListener for creating a new account.
+ * This listener verifies the input fields and creates a new account.
+ * 
+ * @see edu.baylor.GroupFive.ui.landing.LandingPage
+ * @see edu.baylor.GroupFive.ui.utils.BadInputDialog
  *
  * @author Brendon
  */
@@ -118,7 +123,7 @@ public class CreateAccountActionListener implements ActionListener {
         // }
 
         // Get the password
-        String guestPassword = password.getText();
+        String guestPassword = CoreUtils.hashPassword(password.getText());
         
         // If the password is empty, show an error message
         if (guestPassword.isEmpty()) {

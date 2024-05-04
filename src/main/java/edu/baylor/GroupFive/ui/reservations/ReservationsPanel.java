@@ -1,5 +1,7 @@
 package edu.baylor.GroupFive.ui.reservations;
 
+import java.io.IOException;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -7,6 +9,7 @@ import java.util.Date;
 import javax.swing.*;
 import javax.swing.table.*;
 
+import edu.baylor.GroupFive.database.controllers.BillingController;
 import edu.baylor.GroupFive.database.controllers.ReservationController;
 import edu.baylor.GroupFive.database.controllers.RoomController;
 import edu.baylor.GroupFive.models.Room;
@@ -16,6 +19,7 @@ import edu.baylor.GroupFive.ui.utils.buttons.PanelButton;
 import edu.baylor.GroupFive.ui.utils.interfaces.PagePanel;
 import edu.baylor.GroupFive.ui.utils.table.FormPane;
 import edu.baylor.GroupFive.ui.utils.table.HotelTable;
+import edu.baylor.GroupFive.ui.utils.BadInputDialog;
 
 import java.awt.*;
 
@@ -38,11 +42,12 @@ public class ReservationsPanel extends JPanel implements PagePanel {
             "Start Date",
             "End Date",
             "Guest ID",
-            "Price"};
+            "Price",
+            "Checked In"};
 
     // Define data types for the columns
     final Class<?>[] columnClass = new Class[] {
-            String.class, String.class, String.class, String.class, String.class, String.class
+            String.class, String.class, String.class, String.class, String.class, String.class, String.class
     };
 
     /**
@@ -98,13 +103,15 @@ public class ReservationsPanel extends JPanel implements PagePanel {
         JPanel buttonPanel = new JPanel();
 
         // Create buttons
-        PanelButton modifyReservation = new PanelButton("Modify Selected Reservation");
-        PanelButton viewRoom = new PanelButton("View Selected Room");
-        PanelButton deleteReservation = new PanelButton("Delete Selected Reservation");
+        PanelButton modifyReservation = new PanelButton("Modify", 300, 50);
+        PanelButton status = new PanelButton("Check-in/out", 300, 50);
+        PanelButton viewRoom = new PanelButton("View Room", 300, 50);
+        PanelButton deleteReservation = new PanelButton("Delete", 300, 50);
 
         // Add buttons to panel
-        addButtonListeners(modifyReservation, viewRoom, deleteReservation);
+        addButtonListeners(modifyReservation, status, viewRoom, deleteReservation);
         buttonPanel.add(modifyReservation);
+        buttonPanel.add(status);
         buttonPanel.add(viewRoom);
         buttonPanel.add(deleteReservation);
 
@@ -118,16 +125,16 @@ public class ReservationsPanel extends JPanel implements PagePanel {
      * @param viewRoom The view room button.
      * @param deleteReservation The delete reservation button.
      */
-    private void addButtonListeners(JButton viewReservation, JButton viewRoom, JButton deleteReservation) {
+    private void addButtonListeners(JButton viewReservation, JButton status,  JButton viewRoom, JButton deleteReservation) {
+        
+        // Add action listener to modify reservation button
         viewReservation.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row != -1) {
                 Integer roomColumnIndex = table.getColumnModel().getColumnIndex("Room ID");
                 String roomID = (String) table.getValueAt(row, roomColumnIndex);
                 Integer startDateColumnIndex = table.getColumnModel().getColumnIndex("Start Date");
-                Integer endDateColumnIndex = table.getColumnModel().getColumnIndex("End Date");
                 String startDate = (String) table.getValueAt(row, startDateColumnIndex);
-                String endDate = (String) table.getValueAt(row, endDateColumnIndex);
 
                 page.addInfo(roomID);
                 page.addInfo(startDate);
@@ -139,6 +146,85 @@ public class ReservationsPanel extends JPanel implements PagePanel {
             }
         });
 
+        // Add action listener to change status button
+        status.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row != -1) {
+                Integer roomColumnIndex = table.getColumnModel().getColumnIndex("Room ID");
+                String roomID = (String) table.getValueAt(row, roomColumnIndex);
+                Integer startDateColumnIndex = table.getColumnModel().getColumnIndex("Start Date");
+                String startDate = (String) table.getValueAt(row, startDateColumnIndex);
+
+                // Get Date object from startDate string
+                SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+                Date startDateObj = null;
+                try {
+                    startDateObj = dateFormat.parse(startDate);
+                } catch (ParseException ex) {
+                    ex.printStackTrace();
+                }
+
+                // Ensure date was parsed successfully
+                if (startDateObj == null) {
+                    JOptionPane.showMessageDialog(null, "Error getting start date.");
+                    return;
+                }
+
+                Reservation reservation = ReservationController.getReservation(Integer.parseInt(roomID), startDateObj);
+
+                if (reservation == null) {
+                    JOptionPane.showMessageDialog(null, "Error getting reservation.");
+                    return;
+                }
+
+                Boolean checkingIn = null;
+
+                // Guest is already checked in
+                if (reservation.getCheckedInStatus()) {
+                    reservation.setCheckedInStatus(false);
+                    reservation.setActiveStatus(false);
+                    checkingIn = false;
+                } 
+                // Guest is not checked in yet
+                else {
+                    // Guest can only check in between start and end date
+                    Date currDate = new Date();
+                    if (currDate.after(reservation.getStartDate()) && currDate.before(reservation.getEndDate())) {
+                        reservation.setCheckedInStatus(true);
+                        checkingIn = true;
+                    } else {
+                        try {
+                            new BadInputDialog("Guest cannot be checked in unless within reservation dates.", "Time Locked Operation");
+                            return;
+                        } catch (IOException ex) {
+                            System.err.println(ex.getMessage());
+                        }
+                    }
+                }
+
+                Boolean result = ReservationController.modifyReservation(reservation);
+
+                if (result) {
+                    if (checkingIn == true) {
+                        JOptionPane.showMessageDialog(null, "Guest has been checked in.");
+                    } else {
+                        JOptionPane.showMessageDialog(null, "Guest has been checked out.");
+                    }
+                    ((DefaultTableModel)table.getModel()).setValueAt(checkingIn, row, table.getColumnModel().getColumnIndex("Checked In"));
+                    
+                    // Update the table
+                    ((ReservationModel)table.getModel()).refreshData();
+                } else {
+                    JOptionPane.showMessageDialog(null, "Failed to change reservation status.");
+                    return;
+                }
+
+            } else {
+                JOptionPane.showMessageDialog(null, "Please select a reservation to view.");
+            }
+        });
+
+        // Add action listener to view room button
         viewRoom.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row != -1) {
@@ -151,15 +237,23 @@ public class ReservationsPanel extends JPanel implements PagePanel {
             }
         });
 
+        // Add action listener to delete reservation button
         deleteReservation.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row != -1) {
+                // Get the room ID and start date from the selected row
                 Integer roomColumnIndex = table.getColumnModel().getColumnIndex("Room ID");
                 String roomID = (String) table.getValueAt(row, roomColumnIndex);
                 Integer startDateColumnIndex = table.getColumnModel().getColumnIndex("Start Date");
-                Integer endDateColumnIndex = table.getColumnModel().getColumnIndex("End Date");
                 String startDate = (String) table.getValueAt(row, startDateColumnIndex);
-                String endDate = (String) table.getValueAt(row, endDateColumnIndex);
+
+                // Add a confirmation dialog
+                int dialogResult = JOptionPane.showConfirmDialog(null, "Are you sure you want to delete this reservation?", "Warning", JOptionPane.YES_NO_OPTION);
+
+                // Check if the user clicked yes
+                if (dialogResult != JOptionPane.YES_OPTION) {
+                    return;
+                }
 
                 // Parse the startDate from a string to a Date object
                 SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
@@ -177,10 +271,47 @@ public class ReservationsPanel extends JPanel implements PagePanel {
                     return;
                 }
 
-                // FIXME cancelReservation now takes in a Reservation object
-                // ReservationController.cancelReservation(Integer.parseInt(roomID), parsedStartDate);
-                ReservationController.cancelReservation(new Reservation(-1, parsedStartDate, parsedEndDate, "BigErnesto", 110, 420.69));
-                ((DefaultTableModel)table.getModel()).removeRow(row);
+                // Get the reservation from the database
+                Reservation reservation = ReservationController.getReservation(Integer.parseInt(roomID), parsedStartDate);
+
+                // Ensure reservation was fetched successfully
+                if (reservation == null) {
+                    JOptionPane.showMessageDialog(null, "Error getting reservation.");
+                    return;
+                }
+
+                Float fee = 0.0f;
+
+/*
+ * TODO when guest is checkout out. mark active as false
+ * */
+
+                // If within 48 hours, ask user if they are willing to accept the cancellation fee of 80% one nights stay
+                if (parsedStartDate.getTime() - new Date().getTime() < 48 * 60 * 60 * 1000) {
+                    int feeDialogResult = JOptionPane.showConfirmDialog(null, "This reservation is within 48 hours of the start date. \nAre you sure you want to cancel this reservation? \nGuest will be charged 80% of one night's stay.", "Warning", JOptionPane.YES_NO_OPTION);
+                    if (feeDialogResult != JOptionPane.YES_OPTION) {
+                        return;
+                    };
+                    fee = (float) (reservation.getPrice() * 0.8);
+                }
+
+                // Cancel the reservation
+                Boolean result = ReservationController.cancelReservation(reservation);
+
+                if (result) {
+                    JOptionPane.showMessageDialog(null, "Reservation deleted successfully.");
+                    if (fee > 0) {
+                        // Create a transaction for the fee
+                        BillingController.addTransaction(reservation.getGuestUsername(), "Cancellation Fee", fee);
+
+                        JOptionPane.showMessageDialog(null, "Guest has been charged $" + String.format("%.2f", fee) + " for cancelling within 48 hours.");
+                    }
+                    ((DefaultTableModel)table.getModel()).removeRow(row);
+                } else {
+                    JOptionPane.showMessageDialog(null, "Failed to delete reservation.");
+                    return;
+                }
+
             } else {
                 JOptionPane.showMessageDialog(null, "Please select a reservation to delete.");
             }

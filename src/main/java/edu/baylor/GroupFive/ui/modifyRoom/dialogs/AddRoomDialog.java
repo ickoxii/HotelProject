@@ -111,13 +111,35 @@ public class AddRoomDialog extends JDialog {
                     return;
                 }
 
+                // Check that room number is a number
+                try {
+                    Integer.parseInt(roomNumber.getText());
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(table, "Room number must be a number.");
+                    return;
+                }
+
                 // Check that room number isnt already in database
                 if (RoomController.getRoomInfo(Integer.parseInt(roomNumber.getText())) != null) {
                     JOptionPane.showMessageDialog(table, "Room number already exists.");
                     return;
                 }
 
-                System.out.println("Quality: " + Quality.fromString((String) quality.getSelectedItem()));
+                // Check that bed count is a number
+                try {
+                    Integer.parseInt(bedCount.getText());
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(table, "Bed count must be a number.");
+                    return;
+                }
+
+                // Check that price is a number
+                try {
+                    Double.parseDouble(price.getText());
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(table, "Price must be a number.");
+                    return;
+                }
 
                 // Add room to database
                 Room room = new Room(Integer.parseInt(roomNumber.getText()), Quality.fromString((String) quality.getSelectedItem()),
@@ -132,8 +154,8 @@ public class AddRoomDialog extends JDialog {
                 }
 
                 // Add new row to table
-                Object[] row = new Object[] { roomNumber.getText(), roomType.getSelectedItem(), quality.getSelectedItem(),
-                    bedType.getSelectedItem(), bedCount.getText(), smokingBox.getSelectedItem(), price.getText() };
+                Object[] row = new Object[] { Integer.parseInt(roomNumber.getText()), roomType.getSelectedItem(), ((String) quality.getSelectedItem()).toLowerCase(),
+                    ((String) bedType.getSelectedItem()).toLowerCase(), bedCount.getText(), smokingBox.getSelectedItem(), price.getText() };
                     ((javax.swing.table.DefaultTableModel) table.getModel()).addRow(row);
                 
                 dispose();

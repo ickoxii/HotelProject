@@ -1,8 +1,6 @@
 package edu.baylor.GroupFive.database.controllers;
 
 import edu.baylor.GroupFive.util.CoreUtils;
-import edu.baylor.GroupFive.models.User;
-import edu.baylor.GroupFive.models.Room;
 import edu.baylor.GroupFive.models.Reservation;
 import edu.baylor.GroupFive.database.services.ReservationServices;
 import org.apache.logging.log4j.LogManager;
@@ -189,9 +187,10 @@ public class ReservationController {
             return true;
         } catch (SQLException ex) {
             logger.log(Level.WARN, "SQLException modifying reservation with id " + reservation.getDbId());
+            throw new RuntimeException(ex);
         }
 
-        return false;
+        //return false;
     }
 
     /**
@@ -220,17 +219,27 @@ public class ReservationController {
     }
 
     /**
+     * This function returns all active reservations in our database.
+     * @return List of all active reservations in database
+     */
+    public static List<Reservation> getAllActiveReservations() {
+        ReservationServices rs = new ReservationServices();
+        List<Reservation> reservations = rs.getAllActive();
+        return reservations;
+    }
+
+    /**
      * This function takes in a pair of start and end dates and determines
      * if there is any overlap.
      *
-     * @param start1 Start date of interval 1.
-     * @param end1 End date of interval 1.
-     * @param start2 Start date of interval 2.
-     * @param end2 End date of interval 2.
+     * @param start1 Start date of interval 1. This is a {@code java.util.Date} object.
+     * @param end1 End date of interval 1. This is a {@code java.util.Date} object.
+     * @param start2 Start date of interval 2. This is a {@code java.util.Date} object.
+     * @param end2 End date of interval 2. This is a {@code java.util.Date} object.
      * @return {@code true} if there is an overlap. {@code false} otherwise
      * */
     private static boolean isOverlap(Date start1, Date end1, Date start2, Date end2) {
-        return !start1.after(end2) && !end1.before(start2);
+        return !(end2.before(start1) || start2.after(end1));
     }
 
     /**
@@ -243,12 +252,25 @@ public class ReservationController {
      * @return {@code true} if room is booked. {@code false} otherwise
      * */
     public static boolean isRoomBookedOn(int roomNumber, Date startDate, Date endDate){
-        List<Reservation> reservations = getAllReservations();
+        List<Reservation> reservations = getAllActiveReservations();
         List<Reservation> roomReservations = reservations.stream()
             .filter(rsv -> rsv.getRoomNumber() == roomNumber)
             .toList();
         return roomReservations.stream().anyMatch(rsv ->
             isOverlap(startDate, endDate, rsv.getStartDate(), rsv.getEndDate()));
+    }
+
+    /**
+     * This function returns a list of all reservations tied to a certain room.
+     *
+     * @param roomNumber Room number to query across
+     * @return List of reservations linked to {@code roomNumber}
+     * */
+    public static List<Reservation> getRoomReservations(int roomNumber) {
+        List<Reservation> reservations = getAllReservations();
+        return reservations.stream()
+            .filter(rsv -> rsv.getRoomNumber() == roomNumber)
+            .toList();
     }
 
 }

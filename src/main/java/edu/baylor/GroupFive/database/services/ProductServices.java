@@ -1,13 +1,11 @@
 package edu.baylor.GroupFive.database.services;
 
 import edu.baylor.GroupFive.database.daos.ProductsDAO;
-import edu.baylor.GroupFive.database.daos.StockDAO;
 import edu.baylor.GroupFive.models.Product;
-import edu.baylor.GroupFive.models.Stock;
 import edu.baylor.GroupFive.util.logging.G5Logger;
 
-import javax.imageio.plugins.tiff.GeoTIFFTagSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public class ProductServices {
 
@@ -38,6 +36,15 @@ public class ProductServices {
         return true;
     }
 
-
+    /**
+     * Returns list of products.
+     *
+     * @return List of Products
+     * @throws SQLException
+     */
+    public static List<Product> getListOfProducts() throws SQLException {
+        ProductsDAO conn = new ProductsDAO();
+        return conn.getAll();
+    }
 
 }

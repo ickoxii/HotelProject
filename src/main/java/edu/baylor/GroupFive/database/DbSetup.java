@@ -8,7 +8,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
-import java.sql.DriverManager; import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -116,8 +117,6 @@ public class DbSetup {
             throw new RuntimeException(e);
         }
 
-        dbInit();
-
     }
 
     public static void dbTearDown() {
@@ -147,16 +146,6 @@ public class DbSetup {
                 logger.info("FK_23 does not exist");
             }
 
-            // Check if FK_12 constraint exists
-            rs = dbm.getImportedKeys(null, null, "RESERVATIONs");
-            if (rs.next()) {
-                // Drop the FK_12 constraint
-                statement.executeUpdate("ALTER TABLE RESERVATIONs DROP CONSTRAINT FK_12");
-            } else {
-                // FK_12 does not exist
-                logger.info("FK_12 does not exist");
-            }
-
             // Check if PK_USER constraint exists
             rs = dbm.getPrimaryKeys(null, null, "USERs");
             if (rs.next()) {
@@ -165,6 +154,16 @@ public class DbSetup {
             } else {
                 // PK_USER does not exist
                 logger.info("PK_USER does not exist");
+            }
+
+            // Check if FK_12 constraint exists
+            rs = dbm.getImportedKeys(null, null, "RESERVATIONs");
+            if (rs.next()) {
+                // Drop the FK_12 constraint
+                statement.executeUpdate("ALTER TABLE RESERVATIONs DROP CONSTRAINT FK_12");
+            } else {
+                // FK_12 does not exist
+                logger.info("FK_12 does not exist");
             }
 
             statement.executeUpdate(sqlDropReservationTable);
@@ -180,9 +179,9 @@ public class DbSetup {
     }
 
     /**
-     * Inserts our initial values into our database.
+     * Displays the values in the database
      */
-    private static void dbInit() {
+    public static void dbInfo() {
 
         try (Connection connection = DriverManager.getConnection(url, user, password); Statement statement = connection.createStatement()) {
 
@@ -258,15 +257,17 @@ public class DbSetup {
     private static final String sqlDropUserTable = "DROP TABLE USERs";
     private static final String sqlDropTransactionsTable = "DROP TABLE TRANSACTIONS";
     private static final String sqlCreateUserTable = "CREATE TABLE USERs(" +
+            "id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1)," +
             "firstName VARCHAR(30)," +
             "lastName VARCHAR(30)," +
             "username VARCHAR(30) NOT NULL ," +
             "password VARCHAR(256)," +
             "privilege VARCHAR(20)," +
-            "CONSTRAINT PK_USER PRIMARY KEY(username))";
+            "CONSTRAINT PK_USER PRIMARY KEY(id)," +
+            "CONSTRAINT UQ_USER UNIQUE(username))";
 
     private static final String sqlCreateRoomTable = "CREATE TABLE ROOM(" +
-            "roomNumber INTEGER NOT NULL , " +
+            "roomNumber INTEGER NOT NULL, " +
             "quality VARCHAR(15)," +
             "theme VARCHAR(50)," +
             "smoking Boolean," +
@@ -276,16 +277,14 @@ public class DbSetup {
             "CONSTRAINT PK_ROOM PRIMARY KEY(roomNumber))";
 
     private static final String sqlCreateReservationTable = "CREATE TABLE RESERVATIONs(" +
+            "id INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1)," +
             "startDate DATE," +
             "endDate Date," +
             "price DECIMAL(5,2)," +
-            "guestusername VARCHAR(30)," +
+            "guestusername VARCHAR(30) NOT NULL," +
             "roomNumber INTEGER," +
-            "id INTEGER," +
             "active BOOLEAN," +
             "checkedIn BOOLEAN," +
-            "CONSTRAINT FK_12 FOREIGN KEY (guestusername) REFERENCES users(username)," +
-            "CONSTRAINT FK_23 FOREIGN KEY (roomNumber) REFERENCES ROOM(roomNumber)," +
             "CONSTRAINT PK_RES3 PRIMARY KEY(roomNumber, startDate)" +
             ")";
     
@@ -295,7 +294,6 @@ public class DbSetup {
             "purchaseDate DATE," +
             "description VARCHAR(100)," +
             "username VARCHAR(30)," +
-            "CONSTRAINT FK_34 FOREIGN KEY (username) REFERENCES users(username)," +
             "CONSTRAINT PK_TRANS PRIMARY KEY(id)" +
             ")";
 
@@ -314,7 +312,7 @@ public class DbSetup {
 
     private static final String BASE_USER_INSERT_QUERY = "INSERT INTO USERS(firstName, lastName, userName, password, privilege) VALUES ( ?, ?, ?, ?, ? )";
     private static final String BASE_ROOM_INSERT_QUERY = "INSERT INTO ROOM(roomNumber, quality, theme, smoking, bedType, numBeds, dailyPrice) VALUES ( ?, ?, ?, ?, ?, ?, ? )";
-    private static final String BASE_RESERVATION_INSERT_QUERY = "INSERT INTO RESERVATIONS(startDate, endDate, price, guestUsername, roomNumber, id, active, checkedIn) VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )";
+    private static final String BASE_RESERVATION_INSERT_QUERY = "INSERT INTO RESERVATIONS(startDate, endDate, price, guestUsername, roomNumber, active, checkedIn) VALUES ( ?, ?, ?, ?, ?, ?, ? )";
     private static final String BASE_TRANSACTION_INSERT_QUERY = "INSERT INTO TRANSACTIONS(amount, purchaseDate, description, username) VALUES ( ?, ?, ?, ? )";
     private static final String BASE_PRODUCT_INSERT_QUERY = "INSERT INTO PRODUCTS(productName, baseCost, description) VALUES (?,?,?)";
     private static final String BASE_STOCK_INSERT_QUERY = "INSERT INTO STOCKS(productId, stock) VALUES (?,?)";
@@ -353,15 +351,15 @@ public class DbSetup {
         roomInits.add(new Object[] { 108, "comfort", "NatureRetreat",   false,    "QUEEN",    2,    92.22 });
         roomInits.add(new Object[] { 109, "executive", "VintageCharm",    true,     "KING",     2,    98.22 });
 
-        reservationInits.add(new Object[] { "12/17/2024",   "12/19/2024",   97.99,  "Axel112",            102, 1, true,     false });
-        reservationInits.add(new Object[] { "07/12/2024",   "07/22/2024",   95.99,  "LarryTheLobster",    103, 2, true,     false });
-        reservationInits.add(new Object[] { "07/20/2024",   "07/23/2024",   96.99,  "BigA",               101, 3, true,     false });
-        reservationInits.add(new Object[] { "07/20/2024",   "07/23/2024",   97.99,  "Jman",               104, 4, true,     true });
-        reservationInits.add(new Object[] { "07/11/2024",   "07/13/2024",   88.99,  "T-Lee",              105, 5, false,    false });
-        reservationInits.add(new Object[] { "07/09/2024",   "07/12/2024",   97.99,  "andyEv",             101, 6, false,    false });
-        reservationInits.add(new Object[] { "07/10/2024",   "07/17/2024",   88.99,  "KevDog",             102, 7, true,     true });
-        reservationInits.add(new Object[] { "07/22/2024",   "07/25/2024",   97.99,  "Bongo",              103, 8, true,     false });
-        reservationInits.add(new Object[] { "07/14/2024",   "07/19/2024",   97.99,  "Ant",                104, 9, true,     true });
+        reservationInits.add(new Object[] { "12/17/2024",   "12/19/2024",   97.99,  "Axel112",            102, true,     false });
+        reservationInits.add(new Object[] { "07/12/2024",   "07/22/2024",   95.99,  "LarryTheLobster",    103, true,     false });
+        reservationInits.add(new Object[] { "07/20/2024",   "07/23/2024",   96.99,  "BigA",               101, true,     false });
+        reservationInits.add(new Object[] { "07/20/2024",   "07/23/2024",   97.99,  "Jman",               104, true,     true });
+        reservationInits.add(new Object[] { "07/11/2024",   "07/13/2024",   88.99,  "T-Lee",              105, false,    false });
+        reservationInits.add(new Object[] { "07/09/2024",   "07/12/2024",   97.99,  "andyEv",             101, false,    false });
+        reservationInits.add(new Object[] { "07/10/2024",   "07/17/2024",   88.99,  "KevDog",             102, true,     true });
+        reservationInits.add(new Object[] { "07/22/2024",   "07/25/2024",   97.99,  "Bongo",              103, true,     false });
+        reservationInits.add(new Object[] { "07/14/2024",   "07/19/2024",   97.99,  "Ant",                104, true,     true });
 
         transactionInits.add(new Object[] { 3.79, "07/14/2024", "Yogurt", "Ant" });
         transactionInits.add(new Object[] { 4.05, "07/14/2024", "Cereal", "Ant" });
@@ -460,9 +458,8 @@ public class DbSetup {
             statement.setDouble(3, (double) reservation[2]);
             statement.setString(4, (String) reservation[3]);
             statement.setInt(5, (int) reservation[4]);
-            statement.setInt(6, (int) reservation[5]);
+            statement.setBoolean(6, (boolean) reservation[5]);
             statement.setBoolean(7, (boolean) reservation[6]);
-            statement.setBoolean(8, (boolean) reservation[7]);
 
             try {
                 statement.executeUpdate();
@@ -556,33 +553,4 @@ public class DbSetup {
     }
 
 }
-/*
-    private static final List<String> sqlInserts = List.of(
-            "INSERT INTO USERs(firstName, lastNAME, username,password,privilege) VALUES('Joe','Smith','Bongo','p1234', 'admin')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Kevin','James', 'KevDog', 'password', 'clerk')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Axel','Washington', 'Axel112', 'password', 'clerk')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Andrew','Wiles', 'BigA', 'password', 'guest')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Larry','AB', 'LarryTheLobster', 'password', 'guest')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Josh','Smith', 'Jman', 'password', 'guest')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Tyler','Lee', 'T-Lee', 'password', 'guest')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Antoine','Wu', 'Ant', 'password', 'guest')",
-            "INSERT INTO USERs(firstName, lastNAME, username,password, privilege) VALUES('Everett','Anderson', 'andyEv', 'password', 'guest')",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (101,1, 'VintageCharm',true,'KING',2,98.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (102,1, 'NatureRetreat',false,'KING',2,97.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (103,1, 'UrbanElegance',true,'SINGLE',2,77.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (104,1, 'UrbanElegance',true,'SINGLE',2,89.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (105,1, 'VintageCharm',false,'QUEEN',2,99.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (106,1, 'NatureRetreat',true,'SINGLE',2,101.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (107,1, 'NatureRetreat',false,'DOUBLE',2,94.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (108,1, 'NatureRetreat',false,'QUEEN',2,92.22)",
-            "INSERT INTO ROOM(roomNumber,quality,theme,smoking,bedType,numbeds,dailyprice) VALUES (109,1, 'VintageCharm',true,'KING',2,98.22)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('12/17/2024','12/19/2024',97.99,'Axel112',102, 1, true, false)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/12/2024','07/22/2024',95.99,'LarryTheLobster',103, 2, true, false)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/20/2024','07/23/2024',96.99,'BigA',101, 3, true, false)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/20/2024','07/23/2024',97.99,'Jman',104, 4, true, true)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/11/2024','07/13/2024',88.99,'T-Lee',105, 5, false, false)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/09/2024','07/12/2024',97.99,'andyEv',101, 6, false, false)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/10/2024','07/17/2024',88.99,'KevDog',102, 7, true, true)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/22/2024','07/25/2024',97.99,'Bongo',103, 8, true, false)",
-            "INSERT INTO RESERVATIONs( startDate, endDate, price, guestusername, roomNumber, id, active, checkedIn) VALUES ('07/14/2024','07/19/2024',97.99,'Ant',104, 9, true, true)");
-*/
+

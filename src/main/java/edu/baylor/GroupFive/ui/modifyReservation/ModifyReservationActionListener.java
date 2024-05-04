@@ -3,6 +3,7 @@ package edu.baylor.GroupFive.ui.modifyReservation;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -11,6 +12,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
 import edu.baylor.GroupFive.database.controllers.ReservationController;
+import edu.baylor.GroupFive.database.controllers.RoomController;
 import edu.baylor.GroupFive.models.Reservation;
 import edu.baylor.GroupFive.ui.utils.BadInputDialog;
 import edu.baylor.GroupFive.ui.utils.DatePanel;
@@ -32,10 +34,6 @@ public class ModifyReservationActionListener implements ActionListener {
 
     private static final String SUCCESS_MSG = """
         Changes made!
-        """;
-
-    private static final String BAD_CONNECTION_MSG = """
-        Oopsie! We could not establish a connection to the database!
         """;
 
      /**
@@ -113,10 +111,13 @@ public class ModifyReservationActionListener implements ActionListener {
         Date start = startDate.getDate();
         Date end = endDate.getDate();
         Date today = Date.from(ZonedDateTime.now(ZoneId.of("America/Chicago")).toInstant());
-        System.out.println(today.toString());
 
-        // Check if start date is before today
-        if (start.before(today)) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String startString = sdf.format(start);
+        String todayString = sdf.format(today);
+
+        // Check if start date is before today, compare the days, not the time
+        if (start.before(today) && !startString.equals(todayString)) {
             message = """
                         Oopsie! The start date must be after today!
                     """;
@@ -128,6 +129,15 @@ public class ModifyReservationActionListener implements ActionListener {
         if (start.after(end)) {
             message = """
                         Oopsie! The end date must be after the start date.
+                    """;
+            makeBadInputDialog(message);
+            return;
+        }
+
+        // Check if room exists
+        if (RoomController.getRoomInfo(Integer.parseInt(room)) == null) {
+            message = """
+                        Oopsie! The room does not exist. Please try a different room.
                     """;
             makeBadInputDialog(message);
             return;

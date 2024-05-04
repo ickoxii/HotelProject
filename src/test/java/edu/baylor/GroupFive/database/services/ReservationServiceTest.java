@@ -1,18 +1,24 @@
 package edu.baylor.GroupFive.database.services;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
 import edu.baylor.GroupFive.database.DbSetup;
 import edu.baylor.GroupFive.models.Reservation;
-import org.junit.Test;
+
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 import java.sql.SQLException;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests methods for {@link edu.baylor.GroupFive.database.services.ReservationServices}
@@ -22,11 +28,25 @@ import java.sql.SQLException;
 public class ReservationServiceTest {
 
     ReservationServices conn;
+    private static List<Reservation> reservationInits = new ArrayList<>();
 
+
+    @SuppressWarnings("deprecation")
+    @BeforeAll
+    static void initReservations() {
+        reservationInits.add(new Reservation(new Date("12/17/2024"), new Date("12/19/2024"), "Axel112", "102", 97.99, true, false));
+        reservationInits.add(new Reservation(new Date("07/12/2024"), new Date("07/22/2024"), "LarryTheLobster", "103", 95.99, true, false));
+        reservationInits.add(new Reservation(new Date("07/20/2024"), new Date("07/23/2024"), "BigA", "101", 96.99, true, false));
+        reservationInits.add(new Reservation(new Date("07/20/2024"), new Date("07/23/2024"), "Jman", "104", 97.99, true, true));
+        reservationInits.add(new Reservation(new Date("07/11/2024"), new Date("07/13/2024"), "T-Lee", "105", 88.99, false, false));
+        reservationInits.add(new Reservation(new Date("07/09/2024"), new Date("07/12/2024"), "andyEv", "101", 97.99, false, false));
+        reservationInits.add(new Reservation(new Date("07/10/2024"), new Date("07/17/2024"), "KevDog", "102", 88.99, true, true));
+        reservationInits.add(new Reservation(new Date("07/22/2024"), new Date("07/25/2024"), "Bongo", "103", 97.99, true, false));
+        reservationInits.add(new Reservation(new Date("07/14/2024"), new Date("07/19/2024"), "Ant", "104", 97.99, true, true));
+    }
 
     /**
-     * This doesnt actually work right for some reason. Maybe an issue
-     * with pom, junit version inconsistencies, etc. -Icko
+     * Initializes our database before each test.
      */
     @BeforeEach
     void init(){
@@ -60,27 +80,24 @@ public class ReservationServiceTest {
     /**
      * Tests {@link ReservationServices#checkIfAvailable(int, Date, Date)}
      * with a room and date that should not be available.
+     * @throws SQLException 
+     * @throws ParseException 
      */
     @Test
-    public void checkAvailable2(){
+    public void checkAvailable2() throws SQLException, ParseException{
         DbSetup db = new DbSetup();
         SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH);
 
         String sdate = "15/12/2024";
         String edate = "20/12/2024";
         Boolean isAvailable;
-        try {
-            Date startDate = formatter.parse(sdate);
-            Date endDate = formatter.parse(edate);
-            //System.out.println(startDate.getYear() + " " + endDate.getTime());
-            ReservationServices conn = new ReservationServices();
-            isAvailable = conn.checkIfAvailable(102,startDate,endDate);
-            System.out.println(isAvailable);
-        } catch (ParseException | SQLException e) {
-            System.out.println("exception in checkifavailable test code");
-            throw new RuntimeException(e);
-        }
-        //assert(!isAvailable);
+
+        Date startDate = formatter.parse(sdate);
+        Date endDate = formatter.parse(edate);
+        
+        isAvailable = conn.checkIfAvailable(102,startDate,endDate);
+        
+        assert(!isAvailable);
     }
 
     /**
@@ -114,9 +131,7 @@ public class ReservationServiceTest {
         ReservationServices conn = new ReservationServices();
         Reservation myRes;
 
-            myRes = conn.get(102, new Date("01/01/2008"));
-
-
+        myRes = conn.get(102, new Date("01/01/2008"));
 
         assert(myRes == null);
     }
@@ -124,10 +139,11 @@ public class ReservationServiceTest {
 
     /**
      * Tests {@link ReservationServices#insert(Reservation)}.
+     * @throws SQLException 
      */
     @Test
     @Disabled
-    public void addReservation(){
+    public void addReservation() throws SQLException{
         DbSetup db = new DbSetup();
         ReservationServices conn = new ReservationServices();
 
@@ -137,16 +153,8 @@ public class ReservationServiceTest {
 
         // TODO reservation now requires an id
         Reservation newReservation = new Reservation(1, start,end,"Axel112",102,12.34);
-        Integer res = null;
 
-        try {
-            res = conn.insert(newReservation);
-        } catch (SQLException e) {
-            System.out.println("exception in addReservation test code");
-        }
-        System.out.println(res + "--");
-
-        assert(res.equals(1));
+        assert(conn.insert(newReservation) == 1);
 
     }
 
@@ -179,23 +187,105 @@ public class ReservationServiceTest {
 
     /**
      * Tests {@link ReservationServices#getAll()}.
+     * @throws SQLException 
      */
     @Test
-    public void getAllReservations(){
+    public void getAllReservations() throws SQLException{
         DbSetup db = new DbSetup();
         ReservationServices conn = new ReservationServices();
         List<Reservation> r = null;
 
-        try {
-            r = conn.getAll();
-        } catch (SQLException e) {
-            System.out.println("exception in getAllReservations test code");
-            return;
+        r = conn.getAll();
+
+        // Test the reservations against the initialized reservations
+        for (int i = 0; i < reservationInits.size(); i++) {
+            assert(r.get(i).equals(reservationInits.get(i)));
         }
-        for(Reservation a : r){
-            System.out.println(a.toString());
-        }
-        assert (r.size() > 5);
+        
+    }
+
+    /**
+     *  Tests isOverlap with start2 and end2 both before start1.
+     *              s1  e1
+     *  s2  e2
+     * */
+    @Test
+    public void testIsOverlapWithNoOverlap1() {
+        Date s1 = new Date("05/01/2024");
+        Date e1 = new Date("05/06/2024");
+        Date s2 = new Date("04/24/2024");
+        Date e2 = new Date("04/30/2024");
+        assertFalse(ReservationServicesExt.isOverlap(s1, e1, s2, e2));
+    }
+
+    /**
+     *  Tests isOverlap with start2 and end2 both after end2.
+     *  s1   e1
+     *              s2  e2
+     * */
+    @Test
+    public void testIsOverlapWithNoOverlap2() {
+        Date s1 = new Date("05/01/2024");
+        Date e1 = new Date("05/06/2024");
+        Date s2 = new Date("05/24/2024");
+        Date e2 = new Date("05/30/2024");
+        assertFalse(ReservationServicesExt.isOverlap(s1, e1, s2, e2));
+    }
+
+    /**
+     *  Tests isOverlap with start2 before start1 and end2 after start1 but before end1.
+     *          s1      e1
+     *      s2      e2
+     * */
+    @Test
+    public void testIsOverlapWithOverlap1() {
+        Date s1 = new Date("05/01/2024");
+        Date e1 = new Date("05/06/2024");
+        Date s2 = new Date("04/24/2024");
+        Date e2 = new Date("05/03/2024");
+        assertTrue(ReservationServicesExt.isOverlap(s1, e1, s2, e2));
+    }
+
+    /**
+     *  Tests isOverlap with start2 after start1 but before end1 and end2 after end1.
+     *          s1      e1
+     *              s2      e2
+     * */
+    @Test
+    public void testIsOverlapWithOverlap2() {
+        Date s1 = new Date("05/01/2024");
+        Date e1 = new Date("05/06/2024");
+        Date s2 = new Date("05/03/2024");
+        Date e2 = new Date("05/09/2024");
+        assertTrue(ReservationServicesExt.isOverlap(s1, e1, s2, e2));
+    }
+
+    /**
+     *  Tests isOverlap with start2 and end2 between start1 and end1.
+     *          s1          e1
+     *              s2  e2
+     * */
+    @Test
+    public void testIsOverlapWithOverlap3() {
+        Date s1 = new Date("05/01/2024");
+        Date e1 = new Date("05/06/2024");
+        Date s2 = new Date("05/02/2024");
+        Date e2 = new Date("05/05/2024");
+        assertTrue(ReservationServicesExt.isOverlap(s1, e1, s2, e2));
+    }
+
+    /**
+     * Tests isOverlap with start2 before start1 and end2 after end1.
+     *              s1  e1
+     *          s2          e2
+     * */
+    @Test
+    public void testIsOverlapWithOverlap4() {
+        Date s1 = new Date("05/01/2024");
+        Date e1 = new Date("05/06/2024");
+        Date s2 = new Date("04/24/2024");
+        Date e2 = new Date("05/10/2024");
+        assertTrue(ReservationServicesExt.isOverlap(s1, e1, s2, e2));
     }
 
 }

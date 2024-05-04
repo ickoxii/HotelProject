@@ -9,9 +9,8 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.table.DefaultTableModel;
 
+import edu.baylor.GroupFive.database.controllers.ReservationController;
 import edu.baylor.GroupFive.database.controllers.RoomController;
 import edu.baylor.GroupFive.models.Room;
 import edu.baylor.GroupFive.ui.modifyRoom.dialogs.AddRoomDialog;
@@ -19,10 +18,24 @@ import edu.baylor.GroupFive.ui.utils.Page;
 import edu.baylor.GroupFive.ui.utils.buttons.PanelButton;
 import edu.baylor.GroupFive.ui.utils.interfaces.PagePanel;
 import edu.baylor.GroupFive.ui.utils.table.FormPane;
-import edu.baylor.GroupFive.ui.utils.table.HotelModel;
 import edu.baylor.GroupFive.ui.utils.table.HotelTable;
 import edu.baylor.GroupFive.util.logging.G5Logger;
 
+/**
+ * Panel for displaying the rooms in the hotel.
+ * This panel includes a table of rooms and buttons to add, delete, and edit rooms.
+ * 
+ * Implements {@link edu.baylor.GroupFive.ui.utils.interfaces.PagePanel}.
+ * 
+ * @see edu.baylor.GroupFive.ui.utils.interfaces.PagePanel
+ * @see edu.baylor.GroupFive.ui.utils.Page
+ * @see edu.baylor.GroupFive.ui.utils.table.HotelTable
+ * @see edu.baylor.GroupFive.ui.utils.table.FormPane
+ * @see edu.baylor.GroupFive.ui.modifyRoom.dialogs.AddRoomDialog
+ * @see edu.baylor.GroupFive.ui.modifyRoom.EditRoomPanel
+ * 
+ * @author Brendon
+ */
 public class RoomsPanel extends JPanel implements PagePanel {
 
     private Page page;
@@ -43,6 +56,11 @@ public class RoomsPanel extends JPanel implements PagePanel {
             String.class, String.class, String.class, String.class, String.class, String.class, String.class
     };
 
+    /**
+     * Constructs a RoomsPanel with the specified page.
+     *
+     * @param page The page containing this panel.
+     */
     public RoomsPanel(Page page) {
         super();
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -83,6 +101,9 @@ public class RoomsPanel extends JPanel implements PagePanel {
 
     }
 
+    /**
+     * Adds a panel of buttons to the page.
+     */
     private void addButtonPanel() {
         JPanel buttonPanel = new JPanel();
 
@@ -107,10 +128,17 @@ public class RoomsPanel extends JPanel implements PagePanel {
             if (choice != JOptionPane.YES_OPTION) {
                 return;
             }
+
+            // Check if the room is in use
+            if (ReservationController.getRoomReservations(roomNumber).size() > 0) {
+                JOptionPane.showMessageDialog(this, "Room is in use and cannot be deleted.");
+                return;
+            }
             
             Boolean result = RoomController.deleteRoom(roomNumber);
 
             if (result) {
+                JOptionPane.showMessageDialog(this, "Room deleted successfully.");
                 model.getData();
             } else {
                 JOptionPane.showMessageDialog(this, "Failed to delete room.");
@@ -128,7 +156,7 @@ public class RoomsPanel extends JPanel implements PagePanel {
 
             // Get the room number from the selected row
             Integer roomColumnIndex = table.getColumnModel().getColumnIndex("Room Number");
-            int roomNumber = (Integer) table.getValueAt(table.getSelectedRow(), roomColumnIndex);
+            int roomNumber = ((Integer) table.getValueAt(table.getSelectedRow(), roomColumnIndex)).intValue();
             
             Room room = RoomController.getRoomInfo(roomNumber);
 
@@ -156,9 +184,11 @@ public class RoomsPanel extends JPanel implements PagePanel {
 
     }
 
-
+    /**
+     * Refreshes the data in the table.
+     */
     @Override
     public void clear() {
-        // TODO Auto-generated method stub
+        model.getData();
     }
 }

@@ -35,8 +35,9 @@ lib/derby.jar
 FinalProject/
 FinalProject*/
 
-# Javadoc
-doc/
+# Dev Docs
+docs/TODO.md
+docs/USE_CASES.md
 
 # Log files
 derby.log

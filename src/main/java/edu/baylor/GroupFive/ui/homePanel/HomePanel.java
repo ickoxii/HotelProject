@@ -2,24 +2,22 @@ package edu.baylor.GroupFive.ui.homePanel;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.JScrollPane;
 import javax.swing.table.DefaultTableModel;
 
-import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Panel;
+import java.util.Date;
 
+import edu.baylor.GroupFive.models.Reservation;
 import edu.baylor.GroupFive.models.User;
 import edu.baylor.GroupFive.ui.utils.Page;
 import edu.baylor.GroupFive.ui.utils.buttons.PanelButton;
 import edu.baylor.GroupFive.ui.utils.interfaces.PagePanel;
 import edu.baylor.GroupFive.ui.utils.table.HotelTable;
-import edu.baylor.GroupFive.ui.reservations.ReservationModel;
 
 /**
  * Panel for displaying the home screen.
@@ -32,13 +30,6 @@ import edu.baylor.GroupFive.ui.reservations.ReservationModel;
  * @author Brendon
  */
 public class HomePanel extends JPanel implements PagePanel {
-
-    /*
-     * What it needs:
-     * 
-     * - A title label
-     * - A list of reservations
-     */
 
     private Page page;
     private User user;
@@ -108,6 +99,7 @@ public class HomePanel extends JPanel implements PagePanel {
 
         addShopButton(buttonPanel);
         addFindRoomsButton(buttonPanel);
+        addModifyReservationButton(buttonPanel);
     
         add(buttonPanel);
         add(Box.createVerticalGlue());
@@ -136,7 +128,7 @@ public class HomePanel extends JPanel implements PagePanel {
     public void addFindRoomsButton(JPanel buttonPanel) {
         
         // Add a button to the panel
-        PanelButton findRoomsButton = new PanelButton("Find Rooms");
+        PanelButton findRoomsButton = new PanelButton("Make a Reservation");
 
         findRoomsButton.addActionListener(e -> page.onPageSwitch("find-rooms"));
 
@@ -144,13 +136,57 @@ public class HomePanel extends JPanel implements PagePanel {
     }
 
     /**
-     * Filters the table for reservations that include the users username
+     * Adds a "Modify Reservation" button to the specified button panel.
      *
-     * @param table
+     * @param buttonPanel The panel to which the button will be added.
      */
-    public void filterTable(JTable table) {
-        // TODO Filter the table for reservations that include the users username
+    public void addModifyReservationButton(JPanel buttonPanel) {
+        
+        // Add a button to the panel
+        PanelButton modifyReservationButton = new PanelButton("Modify Reservation");
 
+        modifyReservationButton.addActionListener(e -> {
+            if (reservationsTable.getSelectedRow() == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a reservation to modify.");
+                return;
+            }
+
+            // Get the selected rows reservation
+            int selectedRow = reservationsTable.getSelectedRow();
+
+            Reservation reservation;
+
+            try {
+                reservation = ((HomeModel) reservationsTable.getModel()).getReservation(selectedRow);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error fetching reservation data.");
+                return;
+            }
+
+            if (reservation == null) {
+                JOptionPane.showMessageDialog(this, "Error fetching reservation data.");
+                return;
+            }
+
+            Date start = reservation.getStartDate();
+
+            // Check if the reservation has already started
+            if (start.before(new Date())) {
+                JOptionPane.showMessageDialog(this, "This reservation has already started and cannot be modified.");
+                return;
+            }
+
+            // If reservation is within 48 hours, do not allow modification
+            if (start.getTime() - new Date().getTime() < 48 * 60 * 60 * 1000) {
+                JOptionPane.showMessageDialog(this, "This reservation is within 48 hours and cannot be modified. Please see a clerk for assistance.");
+                return;
+            }
+
+            new ModifyReservationListener(page, user, reservation);
+            ((HomeModel) reservationsTable.getModel()).refreshData();
+        });
+
+        buttonPanel.add(modifyReservationButton);
     }
 
     /**

@@ -40,6 +40,8 @@ public class ReserveRoomPanel extends JPanel implements PagePanel {
 
     private JTable table;
     private Page delegate;
+    protected JPanel buttonPanel;
+    protected JLabel title;
 
     private String[] columnNames = {
             "Room",
@@ -77,7 +79,7 @@ public class ReserveRoomPanel extends JPanel implements PagePanel {
         JScrollPane scrollPane = new JScrollPane(table);
 
         // Create a title
-        JLabel title = new JLabel("Available Rooms");
+        title = new JLabel("Available Rooms");
         title.setFont(new java.awt.Font("Arial", Font.BOLD, 36));
         title.setAlignmentX(CENTER_ALIGNMENT);
 
@@ -107,19 +109,17 @@ public class ReserveRoomPanel extends JPanel implements PagePanel {
     /**
      * Adds buttons to the button panel.
      */
-    private void addButtonPanel() {
+    public void addButtonPanel() {
         // Create button panel
-        JPanel buttonPanel = new JPanel();
+        buttonPanel = new JPanel();
 
         // Create buttons
         PanelButton reserveRoom = new PanelButton("Reserve Room");
-        PanelButton viewRoom = new PanelButton("View Room");
         PanelButton adjustDates = new PanelButton("Adjust Dates");
 
         // Add buttons to panel
-        addButtonListeners(reserveRoom, viewRoom, adjustDates);
+        addButtonListeners(reserveRoom, adjustDates);
         buttonPanel.add(reserveRoom);
-        buttonPanel.add(viewRoom);
         buttonPanel.add(adjustDates);
 
         add(buttonPanel);
@@ -129,10 +129,9 @@ public class ReserveRoomPanel extends JPanel implements PagePanel {
      * Adds action listeners to buttons.
      *
      * @param reserveRoom The reserve room button.
-     * @param viewRoom The view room button.
      * @param adjustDates The adjust dates button.
      */
-    private void addButtonListeners(JButton reserveRoom, JButton viewRoom, JButton adjustDates) {
+    public void addButtonListeners(JButton reserveRoom, JButton adjustDates) {
         reserveRoom.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row != -1) {
@@ -140,18 +139,6 @@ public class ReserveRoomPanel extends JPanel implements PagePanel {
                 if (dates != null) {
                     promptReservation(dates.get(0), dates.get(1));
                 }
-            } else {
-                JOptionPane.showMessageDialog(null, "Please select a reservation to view.");
-            }
-        });
-
-        viewRoom.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row != -1) {
-                int roomColumnIndex = table.getColumnModel().getColumnIndex("Room");
-                Integer roomNumber = Integer.parseInt((String) table.getValueAt(row, roomColumnIndex));
-                Room room = RoomController.getRoomInfo(roomNumber);
-                JOptionPane.showMessageDialog(null, room.toString());
             } else {
                 JOptionPane.showMessageDialog(null, "Please select a reservation to view.");
             }
@@ -244,9 +231,29 @@ public class ReserveRoomPanel extends JPanel implements PagePanel {
                 return;
             }
 
-            // TODO should this be the total price or daily price?
-            boolean result = ReservationController.createReservation(new Reservation(-1, startDate, endDate, user.getUsername(), roomObj.getRoomNumber(), roomObj.getDailyPrice()));
+            Reservation prev = null;
+            Boolean result = null;
 
+            // Check if there is an inactive reservation for the room, if so update it
+            if (((prev = ReservationController.getReservation(Integer.parseInt(room), startDate)) != null) && !prev.getActiveStatus()) {
+
+                // Update the reservation
+                prev.setStartDate(startDate);
+                prev.setEndDate(endDate);
+                prev.setGuestID(user.getUsername());
+                prev.setRoomID(room);
+                prev.setPrice(roomObj.getDailyPrice());
+                prev.setCheckedInStatus(false);
+                prev.setActiveStatus(true);
+
+                result = ReservationController.modifyReservation(prev);
+
+            // Otherwise, create a new reservation
+            } else {
+                result = ReservationController.createReservation(new Reservation(startDate, endDate, user.getUsername(), String.valueOf(roomObj.getRoomNumber()), roomObj.getDailyPrice(), true, false));
+            }
+
+            // Check if the reservation was successful
             if (!result) {
                 JOptionPane.showMessageDialog(null, "Room could not be reserved for the selected dates.");
             } else {
@@ -254,6 +261,21 @@ public class ReserveRoomPanel extends JPanel implements PagePanel {
                         + " to " + formatter.format(endDate));
             }
         }
+    }
+
+    /**
+     * Remove the button panel
+     */
+    public void removeButtonPanel() {
+        remove(buttonPanel);
+    }
+
+    /**
+     * Get the table
+     * @return The table
+     */
+    public JTable getTable() {
+        return table;
     }
 
     /**
